@@ -1,0 +1,188 @@
+<!doctype html>
+<!--
+  Real estate mini-tool — semantic page
+  See footer notes for design tokens, theme and storage keys
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Real Estate ROI · Payback · NPV Calculator</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Inter for headings; monospaced font used for numeric columns via CSS -->
+  </head>
+
+  <body>
+    <header class="site-header" role="banner">
+      <div class="header-inner">
+        <div class="title-wrap">
+          <h1 class="site-title">🏠 Real Estate ROI Calculator</h1>
+          <p class="site-sub">Quick estimate of annual cash flow · simple annual ROI · payback period · NPV</p>
+        </div>
+
+        <div class="header-actions">
+          <div class="theme-toggle" aria-hidden="false">
+            <label class="switch" for="themeSwitch">
+              <input id="themeSwitch" type="checkbox" aria-label="Toggle light / dark theme">
+              <span class="switch-track" aria-hidden="true"></span>
+            </label>
+            <span class="visually-hidden" id="themeDesc">Theme toggle: dark or light</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="main" role="main">
+      <div class="layout">
+        <!-- Inputs column -->
+        <section class="panel panel-form" aria-labelledby="inputsHeading">
+          <h2 id="inputsHeading" class="panel-title">Inputs</h2>
+
+          <nav class="tabs" role="tablist" aria-label="Mode selection">
+            <button class="tab-btn" role="tab" aria-selected="true" data-tab="roi">ROI</button>
+            <button class="tab-btn" role="tab" aria-selected="false" data-tab="npv">NPV</button>
+          </nav>
+
+          <form id="inputs" class="form-grid" novalidate>
+            <!-- ROI-related inputs -->
+            <fieldset class="group" data-section="roi">
+              <legend class="sr-only">ROI inputs</legend>
+
+              <label class="field">
+                <span class="label-text">Purchase price (USD)</span>
+                <input inputmode="decimal" step="100" id="price" name="price" type="number" aria-describedby="priceHelp" required>
+                <button type="button" class="info" aria-haspopup="dialog" data-tip="priceTip">?</button>
+                <div id="priceTip" class="sr-only">Purchase price, excluding renovation</div>
+                <div class="field-msg" id="price-msg" aria-live="polite"></div>
+              </label>
+
+              <label class="field">
+                <span class="label-text">Renovation cost (USD)</span>
+                <input inputmode="decimal" step="100" id="reno" name="reno" type="number" aria-describedby="renoHelp">
+                <button type="button" class="info" data-tip="renoTip">?</button>
+                <div id="renoTip" class="sr-only">One-time renovation cost before renting</div>
+                <div class="field-msg" id="reno-msg" aria-live="polite"></div>
+              </label>
+
+              <label class="field">
+                <span class="label-text">Management fee (annual, USD)</span>
+                <input inputmode="decimal" step="1" id="mgmt" name="mgmt" type="number">
+                <button type="button" class="info" data-tip="mgmtTip">?</button>
+                <div id="mgmtTip" class="sr-only">Annual management fee (excl. taxes)</div>
+                <div class="field-msg" id="mgmt-msg" aria-live="polite"></div>
+              </label>
+
+              <label class="field">
+                <span class="label-text">Property tax (annual, USD)</span>
+                <input inputmode="decimal" step="0.01" id="tax" name="tax" type="number">
+                <button type="button" class="info" data-tip="taxTip">?</button>
+                <div id="taxTip" class="sr-only">Annual property tax</div>
+                <div class="field-msg" id="tax-msg" aria-live="polite"></div>
+              </label>
+
+              <label class="field">
+                <span class="label-text">Rent (monthly, USD)</span>
+                <input inputmode="decimal" step="1" id="rent" name="rent" type="number">
+                <button type="button" class="info" data-tip="rentTip">?</button>
+                <div id="rentTip" class="sr-only">Monthly rent income</div>
+                <div class="field-msg" id="rent-msg" aria-live="polite"></div>
+              </label>
+            </fieldset>
+
+            <!-- NPV-only inputs (hidden initially) -->
+            <fieldset class="group" data-section="npv" hidden>
+              <legend class="sr-only">NPV inputs</legend>
+
+              <label class="field">
+                <span class="label-text">Discount rate (%)</span>
+                <input inputmode="decimal" step="0.1" id="discount" name="discount" type="number">
+                <div class="field-msg" id="discount-msg" aria-live="polite"></div>
+              </label>
+
+              <label class="field">
+                <span class="label-text">Investment horizon (years)</span>
+                <input inputmode="numeric" step="1" id="years" name="years" type="number" min="1" max="200">
+                <div class="field-msg" id="years-msg" aria-live="polite"></div>
+              </label>
+            </fieldset>
+
+            <div class="form-actions">
+              <button id="calcBtn" class="btn primary" type="button">Calculate</button>
+              <button id="resetBtn" class="btn" type="button">Reset</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Results column (hidden until first calculation) -->
+        <aside class="panel panel-results" aria-labelledby="resultsHeading" hidden>
+          <h2 id="resultsHeading" class="panel-title">Results</h2>
+
+          <div class="results-grid">
+            <div class="result-card" id="card-invest" aria-live="polite">
+              <div class="card-label">Initial investment</div>
+              <div class="card-value" data-value-id="invest">—</div>
+              <div class="card-foot">Includes purchase price and renovation</div>
+            </div>
+
+            <div class="result-card" id="card-net" aria-live="polite">
+              <div class="card-label">Annual net cash flow</div>
+              <div class="card-value" data-value-id="net">—</div>
+              <div class="card-foot">Rent − management − property tax</div>
+            </div>
+
+            <div class="result-card" id="card-roi" aria-live="polite">
+              <div class="card-label">Simple annual ROI</div>
+              <div class="card-value" data-value-id="roi">—</div>
+              <div class="card-foot">Annual net cash flow ÷ initial investment</div>
+            </div>
+
+            <div class="result-card" id="card-payback" aria-live="polite">
+              <div class="card-label">Estimated payback (years)</div>
+              <div class="card-value" data-value-id="payback">—</div>
+              <div class="card-foot">Shown when net cash flow is positive</div>
+            </div>
+          </div>
+
+          <div class="results-note">Note: This tool assumes no leverage and no growth or terminal value; it's a quick estimate for reference only.</div>
+        </aside>
+      </div>
+
+      <!-- NPV detail table — shown after calculation when NPV tab is active -->
+      <section class="panel panel-table" id="npv-panel" hidden aria-labelledby="tableHeading">
+        <h3 id="tableHeading">Cash Flow & Present Value (merged)</h3>
+        <div class="table-wrap">
+          <table class="tbl" aria-describedby="tableDesc">
+            <caption id="tableDesc" class="sr-only">Annual cash flows, discount factors, present values and cumulative PV</caption>
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                <th scope="col">Net Cash Flow</th>
+                <th scope="col">Discount Factor</th>
+                <th scope="col">Present Value</th>
+                <th scope="col">Cumulative PV</th>
+              </tr>
+            </thead>
+            <tbody id="pv-merged-body"></tbody>
+          </table>
+        </div>
+        <p class="hint">Hint: Yellow highlight indicates the first year when cumulative discounted PV ≥ 0 (discounted payback year). Every 5 years has a subtle band for readability.</p>
+      </section>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+      <p>© This tool is for educational purposes only</p>
+    </footer>
+
+    <script src="script.js" defer></script>
+
+    <!--
+      Design tokens, theme toggle and localStorage notes
+      - Design tokens (CSS variables) live in style.css
+      - Theme toggle persists under key: fw_theme (values: "dark" or "light")
+      - Inputs persist under key: fw_inputs and are auto-filled on load
+      - To clear storage in the console:
+        localStorage.removeItem('fw_inputs');
+        localStorage.removeItem('fw_theme');
+    -->
+  </body>
+</html>
